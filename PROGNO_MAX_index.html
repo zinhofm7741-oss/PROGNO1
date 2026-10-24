@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1769e0">
+<title>PROGNO MAX</title>
+<style>
+:root{--blue:#1769e0;--navy:#102343;--bg:#f2f6fd;--muted:#718096;--green:#11875d;--red:#c83d4d}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--navy);font-family:Arial,sans-serif}
+button,input,select{font:inherit}button{cursor:pointer}.topbar{display:flex;justify-content:space-between;align-items:center;padding:16px;background:white;border-bottom:1px solid #e1e9f5;position:sticky;top:0;z-index:2}
+.brand{font-size:21px;font-weight:900}.brand span,.brand b{color:var(--blue)}main{max-width:760px;margin:auto;padding:16px}
+.hero{padding:24px;color:white;border-radius:22px;background:linear-gradient(135deg,#1354b8,#2689f5);box-shadow:0 12px 30px #1769e022}
+.eyebrow{font-size:11px;letter-spacing:2px}.hero h1{font-size:30px;margin:12px 0}.hero p{color:#e2edff;line-height:1.5}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:24px}.stats div{padding:12px 8px;border-radius:12px;background:#ffffff20}.stats strong,.stats small{display:block}.stats strong{font-size:23px}.stats small{margin-top:6px;font-size:11px}
+.tabs{display:flex;gap:8px;margin:22px 0;overflow-x:auto}.tab,.outline{border:1px solid #d7e2f2;background:white;color:var(--navy);padding:10px 14px;border-radius:10px;white-space:nowrap}.tab.active,.primary{color:white;background:var(--blue);border-color:var(--blue)}
+.section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:22px 0 14px}h2{font-size:20px;margin:0 0 6px}.section-head p,.muted{color:var(--muted);font-size:13px}
+.ticket,.admin-panel{padding:16px;margin:12px 0;background:white;border:1px solid #e0e9f6;border-radius:16px}.ticket-head{display:flex;justify-content:space-between;gap:10px}.match{margin-top:12px;padding:12px;border-radius:10px;background:#f5f8fe}.match strong{display:block;margin-bottom:8px}.pick{color:var(--blue);font-weight:bold}.status{font-size:12px;font-weight:bold}.status.won{color:var(--green)}.status.lost{color:var(--red)}
+.primary{border:0;border-radius:10px;padding:12px 16px}.full{width:100%}form{display:grid;gap:14px}label{display:grid;gap:7px;font-size:14px}input,select{width:100%;min-width:0;padding:12px;border:1px solid #cfdaea;border-radius:9px;background:white}
+.leg-form{padding:14px;border:1px solid #dbe5f3;border-radius:12px;display:grid;gap:12px}.hidden{display:none!important}.empty{padding:30px 12px;text-align:center;color:var(--muted)}.error{color:var(--red);font-size:13px}
+dialog{width:calc(100% - 32px);max-width:400px;border:0;border-radius:18px;padding:22px}dialog::backdrop{background:#10234399}.admin-note{background:#eef5ff;border-radius:10px;padding:12px;font-size:13px;line-height:1.5}
+footer{text-align:center;padding:25px;color:var(--muted);font-size:12px}
+@media(max-width:380px){.hero{padding:18px}.hero h1{font-size:26px}.stats strong{font-size:19px}}
+</style>
+</head>
+<body>
+<header class="topbar"><div class="brand">⚽ PROGNO <b>MAX</b></div><button id="adminOpen" class="outline">Admin</button></header>
+<main>
+<section class="hero"><span class="eyebrow">CENTRO DE PROGNÓSTICOS</span><h1>O teu futebol.<br>Os teus palpites.</h1><p>Consulta as fichas e acompanha os resultados.</p><div class="stats"><div><strong id="total">0</strong><small>Fichas</small></div><div><strong id="accuracy">—</strong><small>Taxa de acerto</small></div><div><strong id="wins">0</strong><small>Acertos</small></div></div></section>
+<nav class="tabs"><button class="tab active" data-view="all">Todas</button><button class="tab" data-view="pending">Pendentes</button><button class="tab" data-view="finished">Finalizadas</button></nav>
+<section class="section-head"><div><h2>Fichas publicadas</h2><p>Prognósticos e estado dos jogos</p></div><button id="refresh" class="outline">Atualizar</button></section>
+<section id="tickets"><div class="empty">A carregar fichas...</div></section>
+<section id="adminPanel" class="admin-panel hidden"><div class="section-head"><div><h2>Painel de administração</h2><p>Publicar e gerir fichas</p></div><button id="logout" class="outline">Sair</button></div>
+<div class="admin-note">Esta versão guarda as fichas neste navegador para demonstração. Para partilhar fichas entre telemóveis e publicar online, configura um projeto Firebase e liga-o ao aplicativo. Não uses esta demonstração como sistema público com dados sensíveis.</div>
+<form id="ticketForm"><label>Nome da ficha<input id="ticketName" required maxlength="100" placeholder="Ex.: Ficha do dia"></label><label>Data e hora<input id="ticketDate" type="datetime-local" required></label><div id="legs"></div><button type="button" id="addLeg" class="outline">+ Adicionar jogo</button><button type="submit" class="primary">Publicar ficha</button></form><h3>Gerir resultados</h3><div id="manageTickets"></div></section>
+</main>
+<dialog id="adminDialog"><form id="loginForm"><h2>Administração</h2><p>Cria uma palavra-passe local para esta demonstração.</p><label>Palavra-passe de administrador<input id="password" type="password" autocomplete="current-password" required minlength="6"></label><p class="error" id="loginError"></p><button class="primary" type="submit">Entrar</button><button class="outline" type="button" id="cancelLogin">Cancelar</button></form></dialog>
+<footer>PROGNO MAX · Prognósticos desportivos</footer>
+<script>
+const $=id=>document.getElementById(id);
+const STORE="prognomax_demo_tickets_v1";
+let tickets=[], currentView="all", admin=false;
+try{tickets=JSON.parse(localStorage.getItem(STORE)||"[]")}catch{tickets=[]}
+function save(){localStorage.setItem(STORE,JSON.stringify(tickets))}
+function esc(v=""){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function legForm(){let el=document.createElement("div");el.className="leg-form";el.innerHTML=`<label>Equipa da casa<input class="home" required maxlength="80" placeholder="Ex.: Barcelona"></label><label>Equipa visitante<input class="away" required maxlength="80" placeholder="Ex.: Real Madrid"></label><label>Campeonato<input class="league" required maxlength="100" placeholder="Ex.: La Liga"></label><label>Mercado<select class="market"><option>Resultado final - 1X2</option><option>Mais de 1.5 golos</option><option>Mais de 2.5 golos</option><option>Ambas marcam</option><option>Dupla hipótese</option><option>Menos de 2.5 golos</option></select></label><label>Prognóstico<input class="pick" required maxlength="120" placeholder="Ex.: Barcelona vence"></label><button type="button" class="outline remove">Remover jogo</button>`;el.querySelector(".remove").onclick=()=>{if($("legs").children.length>1)el.remove()};return el}
+function statusLabel(s){return({pending:"Pendente",won:"Acertou",lost:"Falhou",void:"Anulada"})[s]||"Pendente"}
+function render(){
+ let visible=tickets.filter(t=>currentView==="pending"?t.status==="pending":currentView==="finished"?t.status!=="pending":true);
+ let settled=tickets.filter(t=>["won","lost"].includes(t.status)),wins=settled.filter(t=>t.status==="won").length;
+ $("total").textContent=tickets.length;$("wins").textContent=wins;$("accuracy").textContent=settled.length?Math.round(wins/settled.length*100)+"%":"—";
+ $("tickets").innerHTML=visible.length?visible.map(t=>`<article class="ticket"><div class="ticket-head"><div><strong>${esc(t.name)}</strong><p class="muted">${esc(t.date||"")}</p></div><span class="status ${t.status==="won"?"won":t.status==="lost"?"lost":""}">${statusLabel(t.status)}</span></div>${(t.legs||[]).map(l=>`<div class="match"><strong>${esc(l.home)} vs ${esc(l.away)}</strong><div class="muted">${esc(l.league)}</div><div>${esc(l.market)}</div><div class="pick">${esc(l.pick)}</div></div>`).join("")}</article>`).join(""):'<div class="empty">Ainda não há fichas publicadas.</div>';
+ $("manageTickets").innerHTML=admin?tickets.map(t=>`<div class="match"><strong>${esc(t.name)}</strong><label>Resultado da ficha<select data-status="${esc(t.id)}"><option value="pending" ${t.status==="pending"?"selected":""}>Pendente</option><option value="won" ${t.status==="won"?"selected":""}>Acertou</option><option value="lost" ${t.status==="lost"?"selected":""}>Falhou</option><option value="void" ${t.status==="void"?"selected":""}>Anulada</option></select></label><button class="outline" data-delete="${esc(t.id)}">Apagar ficha</button></div>`).join(""):"";
+ $("manageTickets").querySelectorAll("[data-status]").forEach(e=>e.onchange=()=>{let t=tickets.find(x=>x.id===e.dataset.status);if(t){t.status=e.value;save();render()}});
+ $("manageTickets").querySelectorAll("[data-delete]").forEach(e=>e.onclick=()=>{if(confirm("Apagar esta ficha?")){tickets=tickets.filter(t=>t.id!==e.dataset.delete);save();render()}});
+}
+$("adminOpen").onclick=()=>{if(admin){$("adminPanel").classList.toggle("hidden");return}$("loginError").textContent="";$("adminDialog").showModal()};
+$("cancelLogin").onclick=()=>$("adminDialog").close();
+$("loginForm").onsubmit=e=>{e.preventDefault();if($("password").value==="francisco"){admin=true;$("adminPanel").classList.remove("hidden");$("adminDialog").close();$("password").value="";render()}else $("loginError").textContent="Palavra-passe incorreta."};
+$("logout").onclick=()=>{admin=false;$("adminPanel").classList.add("hidden");render()};
+$("addLeg").onclick=()=>$("legs").appendChild(legForm());
+$("ticketForm").onsubmit=e=>{e.preventDefault();if(!admin)return;let legs=[...$("legs").querySelectorAll(".leg-form")].map(el=>({home:el.querySelector(".home").value.trim(),away:el.querySelector(".away").value.trim(),league:el.querySelector(".league").value.trim(),market:el.querySelector(".market").value,pick:el.querySelector(".pick").value.trim()}));if(!legs.length||legs.some(l=>!l.home||!l.away||!l.league||!l.pick))return alert("Preenche todos os campos dos jogos.");tickets.unshift({id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),name:$("ticketName").value.trim(),date:$("ticketDate").value,legs,status:"pending",createdAt:Date.now()});save();$("ticketForm").reset();$("legs").replaceChildren(legForm());render();alert("Ficha guardada neste navegador.")};
+$("refresh").onclick=()=>{try{tickets=JSON.parse(localStorage.getItem(STORE)||"[]")}catch{tickets=[]}render()};
+document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{currentView=b.dataset.view;document.querySelectorAll("[data-view]").forEach(x=>x.classList.toggle("active",x===b));render()});
+$("legs").appendChild(legForm());render();
+</script>
+</body>
+</html>
